@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import asyncio
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from app.serial.serial_manager import SerialManager
 from app.core.state import ApplicationStateManager

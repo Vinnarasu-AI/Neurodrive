@@ -167,3 +167,4 @@ async def test_wheelchair_client_manual_and_stop_commands():
     res_stop = await client.emergency_stop("Safety stop test")
     assert res_stop["success"] is True
     assert client.current_command == "STOP"
+
