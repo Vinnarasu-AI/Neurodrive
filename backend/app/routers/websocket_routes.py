@@ -7,7 +7,7 @@ from typing import Dict, Any
 from app.serial.serial_manager import SerialManager
 from app.core.state import ApplicationStateManager
 from app.relay.relay_client import RelayClient
-from app.rover.rover_client import RoverClient
+from app.wheelchair.wheelchair_client import WheelchairClient
 from app.services.automation_service import HomeAutomationService
 
 logger = logging.getLogger("neurodrive.ws")
@@ -19,7 +19,7 @@ def get_websocket_routes(
     state_mgr: ApplicationStateManager,
     relay_client: RelayClient,
     auto_service: HomeAutomationService,
-    rover_client: Optional[RoverClient] = None,
+    wheelchair_client: Optional[WheelchairClient] = None,
 ) -> APIRouter:
     @router.websocket("/ws/stream")
     async def websocket_stream(websocket: WebSocket):
@@ -43,9 +43,10 @@ def get_websocket_routes(
                 snapshot["latest_game_jump"] = auto_service.latest_game_jump
                 snapshot["game_jump_counter"] = auto_service.game_jump_counter
 
-                # MOVO Rover Status
-                if rover_client:
-                    snapshot["rover_status"] = rover_client.get_client_status()
+                # Assistive Wheelchair Status
+                if wheelchair_client:
+                    snapshot["wheelchair_status"] = wheelchair_client.get_client_status()
+                    snapshot["rover_status"] = wheelchair_client.get_client_status()  # Compatibility alias
 
                 await websocket.send_text(json.dumps(snapshot))
                 await asyncio.sleep(0.033)

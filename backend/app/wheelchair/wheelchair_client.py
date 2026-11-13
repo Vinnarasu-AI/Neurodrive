@@ -4,13 +4,13 @@ import logging
 from typing import Dict, Any, Optional
 import time
 
-logger = logging.getLogger("neurodrive.rover")
+logger = logging.getLogger("neurodrive.wheelchair")
 
 
-class RoverClient:
+class WheelchairClient:
     """
-    HTTP REST Client for MOVO Delivery Rover ESP32.
-    Matches exact firmware endpoints in movo_rover.ino:
+    HTTP REST Client for Assistive Wheelchair ESP32.
+    Matches exact firmware endpoints in wheelchair.ino:
       GET  /api/health
       GET  /api/status
       POST /api/command  {"command": "FORWARD"|"BACKWARD"|"LEFT"|"RIGHT"|"STOP"}

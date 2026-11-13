@@ -23,8 +23,7 @@ class AppMode(str, Enum):
     IDLE = "IDLE"
     SMART_HOME_ACTIVE = "SMART_HOME_ACTIVE"
     GAME_ACTIVE = "GAME_ACTIVE"
-    ROVER_ACTIVE = "ROVER_ACTIVE"
-    WHEELCHAIR_ACTIVE = "WHEELCHAIR_ACTIVE"  # Reserved Coming Soon
+    WHEELCHAIR_ACTIVE = "WHEELCHAIR_ACTIVE"
 
 
 class ApplicationStateManager:
@@ -43,8 +42,8 @@ class ApplicationStateManager:
     def is_game_active(self) -> bool:
         return self._current_mode == AppMode.GAME_ACTIVE
 
-    def is_rover_active(self) -> bool:
-        return self._current_mode == AppMode.ROVER_ACTIVE
+    def is_wheelchair_active(self) -> bool:
+        return self._current_mode == AppMode.WHEELCHAIR_ACTIVE
 
     def activate_smart_home(self) -> Dict[str, Any]:
         """Activates Smart Home mode."""
@@ -62,12 +61,12 @@ class ApplicationStateManager:
         logger.info("Application state changed to GAME_ACTIVE")
         return self.get_status()
 
-    def activate_rover(self) -> Dict[str, Any]:
-        """Activates MOVO Rover mode."""
-        self._current_mode = AppMode.ROVER_ACTIVE
+    def activate_wheelchair(self) -> Dict[str, Any]:
+        """Activates Assistive Wheelchair mode."""
+        self._current_mode = AppMode.WHEELCHAIR_ACTIVE
         self._last_mode_change = time.time()
-        self._reason = "User activated MOVO Delivery Rover Control"
-        logger.info("Application state changed to ROVER_ACTIVE")
+        self._reason = "User activated Assistive Wheelchair Control"
+        logger.info("Application state changed to WHEELCHAIR_ACTIVE")
         return self.get_status()
 
     def deactivate_all(self, reason: str = "User deactivated application") -> Dict[str, Any]:
@@ -81,13 +80,9 @@ class ApplicationStateManager:
     def request_activation(self, mode_str: str) -> Tuple[bool, str]:
         """
         Validates and transitions to requested mode.
-        Allows SMART_HOME_ACTIVE, GAME_ACTIVE, and ROVER_ACTIVE.
-        Strictly blocks WHEELCHAIR_ACTIVE (Coming Soon).
+        Allows SMART_HOME_ACTIVE, GAME_ACTIVE, and WHEELCHAIR_ACTIVE.
         """
         mode_upper = mode_str.upper()
-        if mode_upper == AppMode.WHEELCHAIR_ACTIVE.value:
-            return False, "Wheelchair Control is currently in development ('Coming Soon') and cannot be activated."
-
         if mode_upper == AppMode.SMART_HOME_ACTIVE.value:
             self.activate_smart_home()
             return True, "Smart Home Automation activated."
@@ -96,9 +91,9 @@ class ApplicationStateManager:
             self.activate_game()
             return True, "EOG Game Control activated."
 
-        if mode_upper == AppMode.ROVER_ACTIVE.value:
-            self.activate_rover()
-            return True, "MOVO Delivery Rover activated."
+        if mode_upper == AppMode.WHEELCHAIR_ACTIVE.value:
+            self.activate_wheelchair()
+            return True, "Assistive Wheelchair Control activated."
 
         if mode_upper == AppMode.IDLE.value:
             self.deactivate_all("User switched to IDLE")
@@ -111,7 +106,7 @@ class ApplicationStateManager:
             "current_mode": self._current_mode.value,
             "is_smart_home_active": self.is_smart_home_active(),
             "is_game_active": self.is_game_active(),
-            "is_rover_active": self.is_rover_active(),
+            "is_wheelchair_active": self.is_wheelchair_active(),
             "last_change": self._last_mode_change,
             "reason": self._reason,
             "available_apps": [
@@ -132,20 +127,12 @@ class ApplicationStateManager:
                     "description": "Real-time pixel-art runner controlled via single deliberate blinks.",
                 },
                 {
-                    "id": "rover_control",
-                    "name": "MOVO Delivery Rover",
-                    "mode": AppMode.ROVER_ACTIVE.value,
-                    "enabled": True,
-                    "status": "Active" if self.is_rover_active() else "Available",
-                    "description": "Autonomous delivery rover driven by EEG focus and bilateral forearm EMG.",
-                },
-                {
                     "id": "wheelchair_control",
                     "name": "Wheelchair Control",
                     "mode": AppMode.WHEELCHAIR_ACTIVE.value,
-                    "enabled": False,
-                    "status": "Coming Soon",
-                    "description": "Assistive mobility directional steering interface.",
+                    "enabled": True,
+                    "status": "Active" if self.is_wheelchair_active() else "Available",
+                    "description": "Assistive mobility navigation powered by frontal EEG and bilateral forearm EMG.",
                 },
             ],
         }

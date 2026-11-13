@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Truck,
+  Navigation,
   ArrowUp,
   ArrowDown,
   ArrowLeft,
@@ -12,39 +12,38 @@ import {
   Gauge,
 } from "lucide-react";
 
-export default function RoverPanel({
-  isRoverActive,
-  roverStatus,
-  movoSignal,
+export default function WheelchairPanel({
+  isWheelchairActive,
+  wheelchairStatus,
+  signalData,
   onSendCommand,
   onSendStop,
   onSetSpeed,
 }) {
-  const currentCommand = roverStatus?.current_command || "STOP";
-  const commandSource = roverStatus?.command_source || "NONE";
-  const isConnected = roverStatus?.connected || false;
-  const currentSpeed = roverStatus?.speed || 140;
+  const currentCommand = wheelchairStatus?.current_command || "STOP";
+  const commandSource = wheelchairStatus?.command_source || "NONE";
+  const isConnected = wheelchairStatus?.connected || false;
+  const currentSpeed = wheelchairStatus?.speed || 140;
 
   // EMG & EEG Real-Time Metrics
-  const eegFocus = movoSignal?.eeg?.focus_index || 0.0;
-  const isEEGIntent = movoSignal?.eeg?.intent_active || false;
-  const emgLeftActive = movoSignal?.emg_left?.active || false;
-  const emgLeftEnv = movoSignal?.emg_left?.envelope || 0.0;
-  const emgRightActive = movoSignal?.emg_right?.active || false;
-  const emgRightEnv = movoSignal?.emg_right?.envelope || 0.0;
-  const detectedDecision = movoSignal?.decision || "STOP";
+  const eegFocus = signalData?.eeg?.focus_index || 0.0;
+  const isEEGIntent = signalData?.eeg?.intent_active || false;
+  const emgLeftActive = signalData?.emg_left?.active || false;
+  const emgLeftEnv = signalData?.emg_left?.envelope || 0.0;
+  const emgRightActive = signalData?.emg_right?.active || false;
+  const emgRightEnv = signalData?.emg_right?.envelope || 0.0;
 
   return (
     <div
       style={{
         background: "rgba(15, 23, 42, 0.8)",
         borderRadius: "16px",
-        border: isRoverActive
-          ? "1px solid rgba(245, 158, 11, 0.4)"
+        border: isWheelchairActive
+          ? "1px solid rgba(59, 130, 246, 0.4)"
           : "1px solid rgba(255, 255, 255, 0.08)",
         padding: "1.5rem",
-        boxShadow: isRoverActive
-          ? "0 0 25px rgba(245, 158, 11, 0.15)"
+        boxShadow: isWheelchairActive
+          ? "0 0 25px rgba(59, 130, 246, 0.15)"
           : "none",
         backdropFilter: "blur(12px)",
         display: "flex",
@@ -66,16 +65,16 @@ export default function RoverPanel({
           <div
             style={{
               padding: "0.5rem",
-              background: "rgba(245, 158, 11, 0.15)",
-              color: "#F59E0B",
+              background: "rgba(59, 130, 246, 0.15)",
+              color: "#3B82F6",
               borderRadius: "10px",
             }}
           >
-            <Truck size={22} />
+            <Navigation size={22} />
           </div>
           <div>
             <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>
-              MOVO Delivery Rover Dashboard
+              Assistive Wheelchair Control
             </h3>
             <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>
               ESP32 L298N Motor Driver • 10.54.195.37:80 • Watchdog 700ms
@@ -111,13 +110,13 @@ export default function RoverPanel({
               borderRadius: "20px",
               fontSize: "0.75rem",
               fontWeight: 700,
-              background: isRoverActive
-                ? "rgba(245, 158, 11, 0.2)"
+              background: isWheelchairActive
+                ? "rgba(59, 130, 246, 0.2)"
                 : "rgba(148, 163, 184, 0.1)",
-              color: isRoverActive ? "#F59E0B" : "#94A3B8",
+              color: isWheelchairActive ? "#3B82F6" : "#94A3B8",
             }}
           >
-            {isRoverActive ? "CONTROL ACTIVE" : "STANDBY"}
+            {isWheelchairActive ? "CONTROL ACTIVE" : "STANDBY"}
           </span>
         </div>
       </div>

@@ -31,7 +31,7 @@ from app.dsp.quality import SignalQualityEvaluator
 from app.dsp.calibration import CalibrationManager
 from app.dsp.blink_detector import DoubleBlinkDetector
 from app.dsp.single_blink_detector import SingleBlinkDetector
-from app.dsp.movo_classifier import MovoGestureClassifier
+from app.dsp.movo_classifier import MovoGestureClassifier as WheelchairClassifier
 
 logger = logging.getLogger("neurodrive.serial")
 
@@ -48,7 +48,7 @@ class SerialManager:
         use_mock: bool = True,
         on_blink_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         on_single_blink_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
-        on_movo_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        on_wheelchair_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ):
         self.port = port
         self.baud_rate = baud_rate
@@ -57,7 +57,7 @@ class SerialManager:
         self.use_mock = use_mock
         self.on_blink_callback = on_blink_callback
         self.on_single_blink_callback = on_single_blink_callback
-        self.on_movo_callback = on_movo_callback
+        self.on_wheelchair_callback = on_wheelchair_callback
 
         # Hardware connection
         self.ser: Optional[serial.Serial] = None
@@ -79,7 +79,7 @@ class SerialManager:
         self.calibration_mgr = CalibrationManager(sample_rate=self.sample_rate)
         self.blink_detector = DoubleBlinkDetector(sample_rate=self.sample_rate)
         self.single_blink_detector = SingleBlinkDetector(sample_rate=self.sample_rate)
-        self.movo_classifier = MovoGestureClassifier(sample_rate=self.sample_rate)
+        self.wheelchair_classifier = WheelchairClassifier(sample_rate=self.sample_rate)
 
         # Signal Buffers (last 4 seconds = 2000 points at 500 Hz)
         self.buffer_len = self.sample_rate * 4
@@ -91,8 +91,8 @@ class SerialManager:
         self.raw_ch3 = deque(maxlen=self.buffer_len)
         self.filtered_ch3 = deque(maxlen=self.buffer_len)
 
-        # Latest Movo classification output
-        self.latest_movo_status: Dict[str, Any] = {
+        # Latest Wheelchair classification output
+        self.latest_wheelchair_status: Dict[str, Any] = {
             "decision": "STOP",
             "source": "REST",
             "eeg": {"filtered": 0.0, "focus_index": 0.0, "intent_active": False, "calibrated": False},
@@ -432,19 +432,19 @@ class SerialManager:
             except Exception as e:
                 logger.error(f"Error in single blink callback: {e}")
 
-        # 6. MOVO Rover Multichannel EEG + EMG Classification
-        movo_res = self.movo_classifier.classify(
+        # 6. Assistive Wheelchair Multichannel EEG + EMG Classification
+        wc_res = self.wheelchair_classifier.classify(
             ch1_raw=raw_ch1,
             ch2_raw=raw_ch2,
             ch3_raw=raw_ch3,
             is_signal_good=is_good,
         )
-        self.latest_movo_status = movo_res
-        if self.on_movo_callback:
+        self.latest_wheelchair_status = wc_res
+        if self.on_wheelchair_callback:
             try:
-                self.on_movo_callback(movo_res)
+                self.on_wheelchair_callback(wc_res)
             except Exception as e:
-                logger.error(f"Error in MOVO callback: {e}")
+                logger.error(f"Error in Wheelchair callback: {e}")
 
     def get_signal_snapshot(self, num_points: int = 500) -> Dict[str, Any]:
         """Thread-safe snapshot with explicit hardware source tagging."""
@@ -462,7 +462,8 @@ class SerialManager:
                     "filtered_ch2": [],
                     "raw_ch3": [],
                     "filtered_ch3": [],
-                    "movo": self.latest_movo_status,
+                    "movo": self.latest_wheelchair_status,
+                    "wheelchair": self.latest_wheelchair_status,
                     "quality": self.latest_quality if not self.use_mock else {"score": 95, "is_good": True, "status": "GOOD"},
                     "calibration": self.calibration_mgr.get_status(),
                     "sample_rate": self.latest_sample_rate_measured if is_conn else 0.0,
@@ -491,7 +492,8 @@ class SerialManager:
             "filtered_ch2": [round(f, 1) for f in filt2_list],
             "raw_ch3": [round(r, 1) for r in raw3_list],
             "filtered_ch3": [round(f, 1) for f in filt3_list],
-            "movo": self.latest_movo_status,
+            "movo": self.latest_wheelchair_status,
+            "wheelchair": self.latest_wheelchair_status,
             "quality": self.latest_quality,
             "calibration": self.calibration_mgr.get_status(),
             "sample_rate": self.latest_sample_rate_measured,

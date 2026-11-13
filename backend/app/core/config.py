@@ -26,11 +26,11 @@ class Settings(BaseSettings):
     RELAY_POLARITY: str = "ACTIVE_HIGH"
     USE_MOCK_RELAY: bool = False
 
-    # MOVO Delivery Rover Settings
-    ROVER_BASE_URL: str = "http://10.54.195.37"
-    ROVER_AUTH_TOKEN: str = "neurodrive_secure_token_abc123"
-    ROVER_TIMEOUT_SEC: float = 1.0
-    USE_MOCK_ROVER: bool = False
+    # Assistive Wheelchair ESP32 Settings
+    WHEELCHAIR_BASE_URL: str = "http://10.54.195.37"
+    WHEELCHAIR_AUTH_TOKEN: str = "neurodrive_secure_token_abc123"
+    WHEELCHAIR_TIMEOUT_SEC: float = 1.0
+    USE_MOCK_WHEELCHAIR: bool = False
 
     # SQLite database path
     DATABASE_PATH: str = "neurodrive.db"

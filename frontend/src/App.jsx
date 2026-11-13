@@ -13,7 +13,7 @@ import DeviceStatusBanner from "./components/DeviceStatusBanner";
 import LiveWaveform from "./components/LiveWaveform";
 import SmartHomePanel from "./components/SmartHomePanel";
 import DinoGame from "./components/DinoGame";
-import RoverPanel from "./components/RoverPanel";
+import WheelchairPanel from "./components/WheelchairPanel";
 import CalibrationModal from "./components/CalibrationModal";
 import DiagnosticsModal from "./components/DiagnosticsModal";
 import EventLogTable from "./components/EventLogTable";
@@ -37,10 +37,10 @@ import {
   startAcquisition,
   stopAcquisition,
   setSimulationMode,
-  fetchRoverStatus,
-  sendRoverCommand,
-  sendRoverStop,
-  sendRoverSpeed,
+  fetchWheelchairStatus,
+  sendWheelchairCommand,
+  sendWheelchairStop,
+  sendWheelchairSpeed,
 } from "./services/api";
 import { createSignalWebSocket } from "./services/websocket";
 
@@ -67,14 +67,14 @@ export default function App() {
   const [latestGameJump, setLatestGameJump] = useState(null);
   const [gameJumpCounter, setGameJumpCounter] = useState(0);
 
-  // MOVO Rover Stream Data
-  const [roverStatus, setRoverStatus] = useState({
+  // Assistive Wheelchair Stream Data
+  const [wheelchairStatus, setWheelchairStatus] = useState({
     connected: false,
     current_command: "STOP",
     command_source: "NONE",
     speed: 140,
   });
-  const [movoSignal, setMovoSignal] = useState(null);
+  const [wheelchairSignal, setWheelchairSignal] = useState(null);
 
   // Modals
   const [isCalibModalOpen, setIsCalibModalOpen] = useState(false);
@@ -115,8 +115,10 @@ export default function App() {
       if (data.latest_double_blink) setLatestDoubleBlink(data.latest_double_blink);
       if (data.latest_game_jump) setLatestGameJump(data.latest_game_jump);
       if (data.game_jump_counter !== undefined) setGameJumpCounter(data.game_jump_counter);
-      if (data.rover_status) setRoverStatus(data.rover_status);
-      if (data.movo) setMovoSignal(data.movo);
+      if (data.wheelchair_status) setWheelchairStatus(data.wheelchair_status);
+      else if (data.rover_status) setWheelchairStatus(data.rover_status);
+      if (data.wheelchair) setWheelchairSignal(data.wheelchair);
+      else if (data.movo) setWheelchairSignal(data.movo);
       if (data.calibration) setCalibrationStatus(data.calibration);
       if (data.relay_state) {
         setDeviceStatus((prev) => ({
@@ -162,9 +164,9 @@ export default function App() {
     }
   };
 
-  const handleActivateRover = async () => {
+  const handleActivateWheelchair = async () => {
     try {
-      await activateApp("ROVER_ACTIVE");
+      await activateApp("WHEELCHAIR_ACTIVE");
       await refreshData();
     } catch (err) {
       alert(`Activation Error: ${err.message}`);
@@ -249,7 +251,7 @@ export default function App() {
   const handleEmergencyStop = async () => {
     try {
       await emergencyStop();
-      await sendRoverStop();
+      await sendWheelchairStop();
       await refreshData();
       alert("EMERGENCY STOP: All active gestures and actuators disarmed.");
     } catch (err) {
@@ -307,27 +309,27 @@ export default function App() {
         onSetSimulation={handleSetSimulation}
       />
 
-      {/* Application Cards (Smart Home, Dino Game, MOVO Rover, Wheelchair Disabled) */}
+      {/* Application Cards (Smart Home, Dino Game, Wheelchair) */}
       <ApplicationCards
         currentMode={appStatus.current_mode}
         onActivateSmartHome={handleActivateSmartHome}
         onActivateGame={handleActivateGame}
-        onActivateRover={handleActivateRover}
+        onActivateWheelchair={handleActivateWheelchair}
         onDeactivate={handleDeactivate}
         isCalibrated={calibrationStatus.calibrated}
         isSignalGood={quality.is_good}
       />
 
-      {/* Conditional MOVO Rover Dashboard when ROVER_ACTIVE */}
-      {appStatus.current_mode === "ROVER_ACTIVE" && (
+      {/* Conditional Wheelchair Dashboard when WHEELCHAIR_ACTIVE */}
+      {appStatus.current_mode === "WHEELCHAIR_ACTIVE" && (
         <div style={{ marginBottom: "1.5rem" }}>
-          <RoverPanel
-            isRoverActive={true}
-            roverStatus={roverStatus}
-            movoSignal={movoSignal}
-            onSendCommand={sendRoverCommand}
-            onSendStop={sendRoverStop}
-            onSetSpeed={sendRoverSpeed}
+          <WheelchairPanel
+            isWheelchairActive={true}
+            wheelchairStatus={wheelchairStatus}
+            signalData={wheelchairSignal}
+            onSendCommand={sendWheelchairCommand}
+            onSendStop={sendWheelchairStop}
+            onSetSpeed={sendWheelchairSpeed}
           />
         </div>
       )}

@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-  NEURODRIVE — MOVO DELIVERY ROVER ESP32 FIRMWARE (SINGLE-FILE ALL-IN-ONE)
+  NEURODRIVE — ASSISTIVE WHEELCHAIR ESP32 FIRMWARE (SINGLE-FILE ALL-IN-ONE)
   Target Board: ESP32 Dev Module / ESP32-WROOM-32
   ==============================================================================
 
@@ -34,11 +34,11 @@
 // ==============================================================================
 // 1. WI-FI & SECURITY CONFIGURATION (EDIT HERE)
 // ==============================================================================
-const char* WIFI_SSID     = "YOUR_WIFI_SSID";         // Enter your 2.4GHz Wi-Fi SSID (e.g. "Vin's F42")
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";     // Enter your Wi-Fi Password (e.g. "244466666")
+const char* WIFI_SSID     = "Vin's F42";              // Your 2.4GHz Wi-Fi SSID
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";     // Your Wi-Fi Password
 
-// HTTP Bearer Authentication Token
-const char* ROVER_AUTH_TOKEN = "neurodrive_secure_token_abc123";
+// HTTP Bearer Authentication Token (must match backend WHEELCHAIR_AUTH_TOKEN)
+const char* WHEELCHAIR_AUTH_TOKEN = "neurodrive_secure_token_abc123";
 
 // Web Server Port
 const int HTTP_PORT = 80;
@@ -82,7 +82,7 @@ const int STATUS_LED = 2; // Onboard LED indicator
 // ==============================================================================
 // 5. RUNTIME STATE VARIABLES
 // ==============================================================================
-enum RoverDirection {
+enum WheelchairDirection {
   DIR_STOP = 0,
   DIR_FORWARD,
   DIR_BACKWARD,
@@ -90,7 +90,7 @@ enum RoverDirection {
   DIR_RIGHT
 };
 
-RoverDirection currentDirection = DIR_STOP;
+WheelchairDirection currentDirection = DIR_STOP;
 int currentSpeed = DEFAULT_MOTOR_SPEED;
 bool isEmergencyStop = false;
 unsigned long lastCommandTimestamp = 0;
@@ -158,7 +158,7 @@ void executeRight(int speedVal) {
   setMotorPWM(speedVal);
 }
 
-const char* directionToString(RoverDirection dir) {
+const char* directionToString(WheelchairDirection dir) {
   switch (dir) {
     case DIR_FORWARD:  return "FORWARD";
     case DIR_BACKWARD: return "BACKWARD";
@@ -178,7 +178,7 @@ bool isAuthorized() {
     return false;
   }
   String authHeader = server.header("Authorization");
-  String expected = String("Bearer ") + ROVER_AUTH_TOKEN;
+  String expected = String("Bearer ") + WHEELCHAIR_AUTH_TOKEN;
   return authHeader.equals(expected);
 }
 
@@ -194,7 +194,7 @@ void sendUnauthorized() {
 void handleHealth() {
   StaticJsonDocument<256> doc;
   doc["status"] = "healthy";
-  doc["device"] = "MOVO_ROVER_ESP32";
+  doc["device"] = "WHEELCHAIR_ESP32";
   doc["firmware_version"] = "2.0.0-neurodrive";
   doc["wifi_rssi"] = WiFi.RSSI();
   doc["uptime_ms"] = millis();
@@ -386,7 +386,7 @@ void initMotors() {
   digitalWrite(STATUS_LED, LOW);
 
   executeStop();
-  Serial.println("[MOTOR] L298N Initialized. Motors strictly STOPPED.");
+  Serial.println("[MOTOR] L298N Initialized. Wheelchair motors strictly STOPPED.");
 }
 
 void initWiFi() {
@@ -429,7 +429,7 @@ void setup() {
   delay(100);
 
   Serial.println("==================================================");
-  Serial.println("   NEURODRIVE — MOVO DELIVERY ROVER FIRMWARE      ");
+  Serial.println("   NEURODRIVE — ASSISTIVE WHEELCHAIR FIRMWARE     ");
   Serial.println("==================================================");
 
   initMotors();
