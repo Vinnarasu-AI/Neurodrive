@@ -8,13 +8,11 @@ from app.core.config import settings
 from app.core.database import db
 from app.core.state import ApplicationStateManager
 from app.relay.relay_client import RelayClient
-from app.wheelchair.wheelchair_client import WheelchairClient
 from app.serial.serial_manager import SerialManager
 from app.services.automation_service import HomeAutomationService
 from app.routers.app_routes import get_app_routes
 from app.routers.calibration_routes import get_calibration_routes
 from app.routers.device_routes import get_device_routes
-from app.routers.wheelchair_routes import get_wheelchair_routes
 from app.routers.websocket_routes import get_websocket_routes
 
 logging.basicConfig(
@@ -31,12 +29,6 @@ relay_client = RelayClient(
     timeout_sec=settings.RELAY_TIMEOUT_SEC,
     use_mock=settings.USE_MOCK_RELAY,
 )
-wheelchair_client = WheelchairClient(
-    base_url=settings.WHEELCHAIR_BASE_URL,
-    auth_token=settings.WHEELCHAIR_AUTH_TOKEN,
-    timeout_sec=settings.WHEELCHAIR_TIMEOUT_SEC,
-    use_mock=settings.USE_MOCK_WHEELCHAIR,
-)
 serial_mgr = SerialManager(
     port=settings.NPG_SERIAL_PORT,
     baud_rate=settings.NPG_BAUD_RATE,
@@ -48,7 +40,6 @@ auto_service = HomeAutomationService(
     state_mgr=state_mgr,
     relay_client=relay_client,
     serial_mgr=serial_mgr,
-    wheelchair_client=wheelchair_client,
 )
 
 
@@ -62,10 +53,8 @@ async def lifespan(app: FastAPI):
     loop = asyncio.get_running_loop()
     auto_service.set_event_loop(loop)
 
-    # Initial safety guarantee: Ensure relay and wheelchair are stopped on startup
+    # Initial safety guarantee: Ensure relay is turned off on startup
     await relay_client.turn_off(trigger="STARTUP_SAFETY_CHECK")
-    await wheelchair_client.emergency_stop(reason="STARTUP_SAFETY_CHECK")
-    wheelchair_client.start_heartbeat_loop()
 
     # Start serial reader background thread
     serial_mgr.start()
@@ -75,8 +64,6 @@ async def lifespan(app: FastAPI):
 
     # Shutdown sequence
     logger.info("Shutting down NEURODRIVE Backend...")
-    wheelchair_client.stop_heartbeat_loop()
-    await wheelchair_client.emergency_stop(reason="SHUTDOWN_CLEANUP")
     serial_mgr.stop()
     await relay_client.turn_off(trigger="SHUTDOWN_CLEANUP")
     logger.info("NEURODRIVE Backend Stopped.")
@@ -99,11 +86,10 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(get_app_routes(state_mgr, auto_service))
+app.include_router(get_app_routes(state_mgr))
 app.include_router(get_calibration_routes(serial_mgr))
 app.include_router(get_device_routes(serial_mgr, relay_client, auto_service))
-app.include_router(get_wheelchair_routes(wheelchair_client, state_mgr))
-app.include_router(get_websocket_routes(serial_mgr, state_mgr, relay_client, auto_service, wheelchair_client))
+app.include_router(get_websocket_routes(serial_mgr, state_mgr, relay_client, auto_service))
 
 
 @app.get("/")
@@ -119,6 +105,21 @@ def root():
 
 
 if __name__ == "__main__":
+    import os
+    import sys
+    from pathlib import Path
     import uvicorn
-    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
+
+    backend_dir = Path(__file__).resolve().parent.parent
+    if str(backend_dir) not in sys.path:
+        sys.path.insert(0, str(backend_dir))
+    os.environ["PYTHONPATH"] = str(backend_dir) + (os.pathsep + os.environ["PYTHONPATH"] if "PYTHONPATH" in os.environ else "")
+
+    uvicorn.run(
+        "app.main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG,
+        app_dir=str(backend_dir),
+    )
 

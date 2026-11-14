@@ -22,24 +22,16 @@ def test_state_manager_mutual_exclusivity():
     assert not sm.is_smart_home_active()
     assert sm.current_mode == AppMode.GAME_ACTIVE
 
-    # Activate Wheelchair Mode (Fully integrated and active!)
+    # Attempt Wheelchair (Strictly reserved Coming Soon)
     ok, msg = sm.request_activation("WHEELCHAIR_ACTIVE")
-    assert ok is True
-    assert sm.is_wheelchair_active()
-    assert not sm.is_game_active()
-    assert not sm.is_smart_home_active()
-    assert sm.current_mode == AppMode.WHEELCHAIR_ACTIVE
-
-    # Reject invalid mode
-    ok, msg = sm.request_activation("UNKNOWN_MODE")
     assert ok is False
-    assert sm.is_wheelchair_active()
+    assert "Coming Soon" in msg
+    assert sm.is_game_active()
 
     # Deactivate back to IDLE
     sm.deactivate_all("User manual stop")
     assert sm.current_mode == AppMode.IDLE
     assert not sm.is_smart_home_active()
-    assert not sm.is_wheelchair_active()
 
 
 @pytest.mark.asyncio

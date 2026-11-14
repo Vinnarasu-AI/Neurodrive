@@ -23,7 +23,7 @@ class AppMode(str, Enum):
     IDLE = "IDLE"
     SMART_HOME_ACTIVE = "SMART_HOME_ACTIVE"
     GAME_ACTIVE = "GAME_ACTIVE"
-    WHEELCHAIR_ACTIVE = "WHEELCHAIR_ACTIVE"
+    WHEELCHAIR_ACTIVE = "WHEELCHAIR_ACTIVE"  # Reserved Coming Soon
 
 
 class ApplicationStateManager:
@@ -80,9 +80,13 @@ class ApplicationStateManager:
     def request_activation(self, mode_str: str) -> Tuple[bool, str]:
         """
         Validates and transitions to requested mode.
-        Allows SMART_HOME_ACTIVE, GAME_ACTIVE, and WHEELCHAIR_ACTIVE.
+        Allows SMART_HOME_ACTIVE and GAME_ACTIVE.
+        Strictly blocks WHEELCHAIR_ACTIVE (Coming Soon).
         """
         mode_upper = mode_str.upper()
+        if mode_upper == AppMode.WHEELCHAIR_ACTIVE.value:
+            return False, "Wheelchair Control is currently in development ('Coming Soon') and cannot be activated."
+
         if mode_upper == AppMode.SMART_HOME_ACTIVE.value:
             self.activate_smart_home()
             return True, "Smart Home Automation activated."
@@ -90,10 +94,6 @@ class ApplicationStateManager:
         if mode_upper == AppMode.GAME_ACTIVE.value:
             self.activate_game()
             return True, "EOG Game Control activated."
-
-        if mode_upper == AppMode.WHEELCHAIR_ACTIVE.value:
-            self.activate_wheelchair()
-            return True, "Assistive Wheelchair Control activated."
 
         if mode_upper == AppMode.IDLE.value:
             self.deactivate_all("User switched to IDLE")
@@ -106,7 +106,6 @@ class ApplicationStateManager:
             "current_mode": self._current_mode.value,
             "is_smart_home_active": self.is_smart_home_active(),
             "is_game_active": self.is_game_active(),
-            "is_wheelchair_active": self.is_wheelchair_active(),
             "last_change": self._last_mode_change,
             "reason": self._reason,
             "available_apps": [
@@ -130,9 +129,9 @@ class ApplicationStateManager:
                     "id": "wheelchair_control",
                     "name": "Wheelchair Control",
                     "mode": AppMode.WHEELCHAIR_ACTIVE.value,
-                    "enabled": True,
-                    "status": "Active" if self.is_wheelchair_active() else "Available",
-                    "description": "Assistive mobility navigation powered by frontal EEG and bilateral forearm EMG.",
+                    "enabled": False,
+                    "status": "Coming Soon",
+                    "description": "Assistive mobility directional steering interface.",
                 },
             ],
         }

@@ -42,7 +42,6 @@ class CalibrationManager:
         self.profiles: Dict[str, CalibrationProfile] = {
             "smart_home": CalibrationProfile("smart_home", default_threshold=220.0),
             "game": CalibrationProfile("game", default_threshold=180.0),
-            "wheelchair": CalibrationProfile("wheelchair", default_threshold=60.0),
         }
 
     @property
@@ -68,18 +67,6 @@ class CalibrationManager:
     @game_blink_threshold.setter
     def game_blink_threshold(self, val: float):
         self.profiles["game"].blink_peak_threshold = val
-
-    @property
-    def wheelchair_calibrated(self) -> bool:
-        return self.profiles["wheelchair"].calibrated
-
-    @property
-    def wheelchair_threshold(self) -> float:
-        return self.profiles["wheelchair"].blink_peak_threshold
-
-    @wheelchair_threshold.setter
-    def wheelchair_threshold(self, val: float):
-        self.profiles["wheelchair"].blink_peak_threshold = val
 
     def start_calibration(self, target: str = "smart_home"):
         """Starts stage 1: Baseline acquisition for the target application."""
@@ -145,11 +132,9 @@ class CalibrationManager:
     def get_status(self) -> Dict[str, Any]:
         sh_prof = self.profiles["smart_home"]
         gm_prof = self.profiles["game"]
-        wc_prof = self.profiles["wheelchair"]
         return {
             "calibrated": sh_prof.calibrated,
             "game_calibrated": gm_prof.calibrated,
-            "wheelchair_calibrated": wc_prof.calibrated,
             "is_calibrating": self.is_calibrating,
             "active_target": self.active_calib_target,
             "stage": self.stage,
@@ -166,13 +151,6 @@ class CalibrationManager:
                 "baseline_std": round(gm_prof.baseline_std, 2),
                 "blink_peak_threshold": round(gm_prof.blink_peak_threshold, 2),
                 "last_calibrated_at": gm_prof.last_calibrated_at,
-            },
-            "wheelchair": {
-                "calibrated": wc_prof.calibrated,
-                "baseline_mean": round(wc_prof.baseline_mean, 2),
-                "baseline_std": round(wc_prof.baseline_std, 2),
-                "blink_peak_threshold": round(wc_prof.blink_peak_threshold, 2),
-                "last_calibrated_at": wc_prof.last_calibrated_at,
             },
             # Compatibility aliases for Smart Home
             "baseline_mean": round(sh_prof.baseline_mean, 2),

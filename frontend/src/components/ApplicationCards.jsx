@@ -1,27 +1,24 @@
 import React from "react";
-import { Home, Gamepad2, Navigation, CheckCircle2 } from "lucide-react";
+import { Home, Gamepad2, Navigation, CheckCircle2, Lock } from "lucide-react";
 
 export default function ApplicationCards({
   currentMode,
   onActivateSmartHome,
   onActivateGame,
-  onActivateWheelchair,
   onDeactivate,
   isCalibrated,
   isSignalGood,
 }) {
   const isSmartHomeActive = currentMode === "SMART_HOME_ACTIVE";
   const isGameActive = currentMode === "GAME_ACTIVE";
-  const isWheelchairActive = currentMode === "WHEELCHAIR_ACTIVE";
 
   return (
     <div className="apps-grid">
       {/* 1. Smart Home Automation (Active or Available) */}
       <div className={`app-card ${isSmartHomeActive ? "active" : ""}`}>
         <span
-          className={`app-card-badge ${
-            isSmartHomeActive ? "badge-active" : "badge-ready"
-          }`}
+          className={`app-card-badge ${isSmartHomeActive ? "badge-active" : "badge-ready"
+            }`}
         >
           {isSmartHomeActive ? "Active" : "Available"}
         </span>
@@ -65,9 +62,8 @@ export default function ApplicationCards({
       {/* 2. EOG Dino Game Control (Active or Available) */}
       <div className={`app-card ${isGameActive ? "active" : ""}`}>
         <span
-          className={`app-card-badge ${
-            isGameActive ? "badge-active" : "badge-ready"
-          }`}
+          className={`app-card-badge ${isGameActive ? "badge-active" : "badge-ready"
+            }`}
         >
           {isGameActive ? "Active" : "Available"}
         </span>
@@ -108,59 +104,28 @@ export default function ApplicationCards({
         </div>
       </div>
 
-      {/* 3. Assistive Wheelchair Control (Active or Available) */}
-      <div className={`app-card ${isWheelchairActive ? "active" : ""}`}>
-        <span
-          className={`app-card-badge ${
-            isWheelchairActive ? "badge-active" : "badge-ready"
-          }`}
-        >
-          {isWheelchairActive ? "Active" : "Available"}
-        </span>
+      {/* 3. Wheelchair Control (Strictly Coming Soon & Disabled) */}
+      <div className="app-card disabled" title="Reserved for future phase - Disabled">
+        <span className="app-card-badge badge-disabled">Coming Soon</span>
 
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
-            <div style={{ padding: "0.6rem", background: "rgba(59, 130, 246, 0.15)", borderRadius: "10px", color: "#3B82F6" }}>
+            <div style={{ padding: "0.6rem", background: "rgba(148, 163, 184, 0.1)", borderRadius: "10px", color: "#64748B" }}>
               <Navigation size={24} />
             </div>
             <div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Assistive Wheelchair</h3>
-              <p style={{ fontSize: "0.75rem", color: "#94A3B8" }}>Application 03 • EEG + Dual EMG</p>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#94A3B8" }}>Wheelchair Control</h3>
+              <p style={{ fontSize: "0.75rem", color: "#64748B" }}>Application 03 • Inactive</p>
             </div>
           </div>
-          <p style={{ fontSize: "0.85rem", color: "#CBD5E1", lineHeight: "1.4", marginBottom: "1.25rem" }}>
-            Autonomous wheelchair navigation: CH1 EEG mental focus triggers Forward, CH2 Left EMG turns Left, CH3 Right EMG turns Right, and bilateral fists (CH2+CH3) reverses Backward.
+          <p style={{ fontSize: "0.85rem", color: "#64748B", lineHeight: "1.4", marginBottom: "1.25rem" }}>
+            Assistive mobility and motorized wheelchair directional steering using sustained eye gestures and safety interlocks.
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "0.6rem", marginTop: "auto" }}>
-          {isWheelchairActive ? (
-            <button
-              className="btn btn-rose"
-              style={{ width: "100%" }}
-              onClick={onDeactivate}
-            >
-              Deactivate Wheelchair
-            </button>
-          ) : (
-            <button
-              className="btn btn-blue"
-              style={{
-                width: "100%",
-                background: "#3B82F6",
-                color: "#FFFFFF",
-                fontWeight: 700,
-                border: "none",
-                borderRadius: "8px",
-                padding: "0.6rem",
-                cursor: "pointer",
-              }}
-              onClick={onActivateWheelchair}
-            >
-              Activate Wheelchair Control
-            </button>
-          )}
-        </div>
+        <button className="btn btn-secondary" style={{ width: "100%" }} disabled>
+          <Lock size={14} /> Locked (Phase 3)
+        </button>
       </div>
     </div>
   );

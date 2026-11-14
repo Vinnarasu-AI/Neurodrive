@@ -119,41 +119,6 @@ export async function manualRelayOff() {
   return res.json();
 }
 
-// Assistive Wheelchair REST API calls
-export async function fetchWheelchairStatus() {
-  const res = await fetch(`${API_BASE}/api/device/wheelchair/status`);
-  if (!res.ok) throw new Error("Failed to fetch wheelchair status");
-  return res.json();
-}
-
-export async function sendWheelchairCommand(command) {
-  const res = await fetch(`${API_BASE}/api/device/wheelchair/command`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ command }),
-  });
-  if (!res.ok) throw new Error("Failed to send wheelchair command");
-  return res.json();
-}
-
-export async function sendWheelchairStop() {
-  const res = await fetch(`${API_BASE}/api/device/wheelchair/stop`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("Failed to stop wheelchair");
-  return res.json();
-}
-
-export async function sendWheelchairSpeed(speed) {
-  const res = await fetch(`${API_BASE}/api/device/wheelchair/speed`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ speed }),
-  });
-  if (!res.ok) throw new Error("Failed to set wheelchair speed");
-  return res.json();
-}
-
 export async function emergencyStop() {
   const res = await fetch(`${API_BASE}/api/device/emergency_stop`, {
     method: "POST",

@@ -2,12 +2,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import asyncio
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from app.serial.serial_manager import SerialManager
 from app.core.state import ApplicationStateManager
 from app.relay.relay_client import RelayClient
-from app.wheelchair.wheelchair_client import WheelchairClient
 from app.services.automation_service import HomeAutomationService
 
 logger = logging.getLogger("neurodrive.ws")
@@ -19,12 +18,11 @@ def get_websocket_routes(
     state_mgr: ApplicationStateManager,
     relay_client: RelayClient,
     auto_service: HomeAutomationService,
-    wheelchair_client: Optional[WheelchairClient] = None,
 ) -> APIRouter:
     @router.websocket("/ws/stream")
     async def websocket_stream(websocket: WebSocket):
         await websocket.accept()
-        logger.info("Frontend WebSocket client connected to real-time EOG/EEG/EMG feed")
+        logger.info("Frontend WebSocket client connected to real-time EOG feed")
 
         try:
             while True:
@@ -42,11 +40,6 @@ def get_websocket_routes(
                 # Single blink Jump event for Dino Game
                 snapshot["latest_game_jump"] = auto_service.latest_game_jump
                 snapshot["game_jump_counter"] = auto_service.game_jump_counter
-
-                # Assistive Wheelchair Status
-                if wheelchair_client:
-                    snapshot["wheelchair_status"] = wheelchair_client.get_client_status()
-                    snapshot["rover_status"] = wheelchair_client.get_client_status()  # Compatibility alias
 
                 await websocket.send_text(json.dumps(snapshot))
                 await asyncio.sleep(0.033)

@@ -20,7 +20,6 @@ from collections import deque
 from app.core.state import ApplicationStateManager, AppMode
 from app.core.database import db
 from app.relay.relay_client import RelayClient
-from app.wheelchair.wheelchair_client import WheelchairClient
 from app.serial.serial_manager import SerialManager
 
 logger = logging.getLogger("neurodrive.service")
@@ -32,17 +31,16 @@ class HomeAutomationService:
         state_mgr: ApplicationStateManager,
         relay_client: RelayClient,
         serial_mgr: SerialManager,
-        wheelchair_client: Optional[WheelchairClient] = None,
+        wheelchair_client: Optional[Any] = None,
     ):
         self.state_mgr = state_mgr
         self.relay_client = relay_client
         self.serial_mgr = serial_mgr
         self.wheelchair_client = wheelchair_client
 
-        # Bind all callbacks to this routing service
+        # Bind both callbacks to this routing service
         self.serial_mgr.on_blink_callback = self._handle_double_blink_event
         self.serial_mgr.on_single_blink_callback = self._handle_single_blink_event
-        self.serial_mgr.on_wheelchair_callback = self._handle_wheelchair_event
 
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._last_event_info: Optional[Dict[str, Any]] = None
@@ -51,8 +49,15 @@ class HomeAutomationService:
         self.latest_game_jump: Optional[Dict[str, Any]] = None
         self.game_jump_counter: int = 0
 
-        # Latest wheelchair gesture
-        self.latest_wheelchair_event: Optional[Dict[str, Any]] = None
+    def _handle_wheelchair_event(self, event_data: Dict[str, Any]):
+        if not self.state_mgr.is_wheelchair_active() or not self.wheelchair_client:
+            return
+        cmd = event_data.get("decision", "STOP")
+        if self._loop and self._loop.is_running():
+            asyncio.run_coroutine_threadsafe(
+                self.wheelchair_client.send_command(cmd, source=event_data.get("source", "WHEELCHAIR_INTENT")),
+                self._loop,
+            )
 
     def set_event_loop(self, loop: asyncio.AbstractEventLoop):
         self._loop = loop
@@ -89,24 +94,6 @@ class HomeAutomationService:
         # Log jump event to DB asynchronously
         if self._loop and self._loop.is_running():
             asyncio.run_coroutine_threadsafe(self._log_game_jump(event_data), self._loop)
-
-    def _handle_wheelchair_event(self, wc_data: Dict[str, Any]):
-        """
-        Wheelchair handler: ONLY processes when WHEELCHAIR_ACTIVE is true.
-        Strictly forbidden from running when SMART_HOME_ACTIVE or GAME_ACTIVE or IDLE.
-        """
-        if not self.state_mgr.is_wheelchair_active():
-            return
-
-        self.latest_wheelchair_event = wc_data
-        decision = wc_data.get("decision", "STOP")
-        source = wc_data.get("source", "REST")
-
-        if self.wheelchair_client and self._loop and self._loop.is_running():
-            asyncio.run_coroutine_threadsafe(
-                self.wheelchair_client.send_command(decision, source=source),
-                self._loop,
-            )
 
     async def _log_game_jump(self, event_data: Dict[str, Any]):
         await db.log_event(
@@ -171,7 +158,5 @@ class HomeAutomationService:
         self.serial_mgr.blink_detector.reset()
         self.serial_mgr.single_blink_detector.reset()
         self.latest_game_jump = None
-        if self.wheelchair_client and self._loop and self._loop.is_running():
-            asyncio.run_coroutine_threadsafe(self.wheelchair_client.emergency_stop("EMERGENCY_DISABLE"), self._loop)
         logger.warning("Emergency disable invoked: All gesture processing disarmed.")
         return status

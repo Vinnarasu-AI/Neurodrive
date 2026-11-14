@@ -15,9 +15,9 @@ class SignalQualityEvaluator:
     def __init__(
         self,
         adc_max: float = 4095.0,
-        flatline_std_threshold: float = 2.0,
-        saturation_margin: float = 20.0,
-        noise_std_threshold: float = 600.0,
+        flatline_std_threshold: float = 1.0,
+        saturation_margin: float = 5.0,
+        noise_std_threshold: float = 1200.0,
     ):
         self.adc_max = adc_max
         self.flatline_std = flatline_std_threshold
@@ -50,12 +50,12 @@ class SignalQualityEvaluator:
         std_raw = float(np.std(raw_window))
         std_filt = float(np.std(filtered_window))
 
-        # 1. Saturation / Railing
+        # 1. Saturation / Railing (Only reject if genuinely pegged at extremes > 20% of samples)
         clip_low = np.sum(raw_window <= self.saturation_margin)
         clip_high = np.sum(raw_window >= (self.adc_max - self.saturation_margin))
         clipping_ratio = (clip_low + clip_high) / len(raw_window)
 
-        if clipping_ratio > 0.05:
+        if clipping_ratio > 0.20:
             return {
                 "score": 10.0,
                 "is_good": False,

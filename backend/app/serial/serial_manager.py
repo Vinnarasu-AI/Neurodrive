@@ -31,7 +31,6 @@ from app.dsp.quality import SignalQualityEvaluator
 from app.dsp.calibration import CalibrationManager
 from app.dsp.blink_detector import DoubleBlinkDetector
 from app.dsp.single_blink_detector import SingleBlinkDetector
-from app.dsp.movo_classifier import MovoGestureClassifier as WheelchairClassifier
 
 logger = logging.getLogger("neurodrive.serial")
 
@@ -48,7 +47,6 @@ class SerialManager:
         use_mock: bool = True,
         on_blink_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         on_single_blink_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
-        on_wheelchair_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ):
         self.port = port
         self.baud_rate = baud_rate
@@ -57,7 +55,6 @@ class SerialManager:
         self.use_mock = use_mock
         self.on_blink_callback = on_blink_callback
         self.on_single_blink_callback = on_single_blink_callback
-        self.on_wheelchair_callback = on_wheelchair_callback
 
         # Hardware connection
         self.ser: Optional[serial.Serial] = None
@@ -79,26 +76,12 @@ class SerialManager:
         self.calibration_mgr = CalibrationManager(sample_rate=self.sample_rate)
         self.blink_detector = DoubleBlinkDetector(sample_rate=self.sample_rate)
         self.single_blink_detector = SingleBlinkDetector(sample_rate=self.sample_rate)
-        self.wheelchair_classifier = WheelchairClassifier(sample_rate=self.sample_rate)
 
         # Signal Buffers (last 4 seconds = 2000 points at 500 Hz)
         self.buffer_len = self.sample_rate * 4
         self.timestamps = deque(maxlen=self.buffer_len)
         self.raw_ch1 = deque(maxlen=self.buffer_len)
         self.filtered_ch1 = deque(maxlen=self.buffer_len)
-        self.raw_ch2 = deque(maxlen=self.buffer_len)
-        self.filtered_ch2 = deque(maxlen=self.buffer_len)
-        self.raw_ch3 = deque(maxlen=self.buffer_len)
-        self.filtered_ch3 = deque(maxlen=self.buffer_len)
-
-        # Latest Wheelchair classification output
-        self.latest_wheelchair_status: Dict[str, Any] = {
-            "decision": "STOP",
-            "source": "REST",
-            "eeg": {"filtered": 0.0, "focus_index": 0.0, "intent_active": False, "calibrated": False},
-            "emg_left": {"filtered": 0.0, "envelope": 0.0, "active": False, "threshold": 60.0},
-            "emg_right": {"filtered": 0.0, "envelope": 0.0, "active": False, "threshold": 60.0},
-        }
 
         # Metrics
         self.latest_quality = {"score": 0.0, "is_good": False, "status": "DISCONNECTED"}
@@ -307,10 +290,8 @@ class SerialManager:
                     now = time.time()
 
                     for counter, ch_values in packets:
-                        ch1_val = float(ch_values[0])
-                        ch2_val = float(ch_values[1]) if len(ch_values) > 1 else 2048.0
-                        ch3_val = float(ch_values[2]) if len(ch_values) > 2 else 2048.0
-                        self._process_sample(now, ch1_val, ch2_val, ch3_val)
+                        # Extract Channel 1 (vertical EOG)
+                        self._process_sample(now, float(ch_values[0]))
                         self._packet_count_window += 1
 
                 except Exception as e:
@@ -338,62 +319,42 @@ class SerialManager:
                         self.latest_quality = {"score": 0.0, "is_good": False, "status": "DISCONNECTED"}
 
     def _run_mock_iteration(self):
-        """Simulates 500Hz realistic 3-channel data (CH1: EOG/EEG, CH2: Left EMG, CH3: Right EMG)."""
+        """Simulates 500Hz realistic EOG strictly during simulation mode."""
         now = time.time()
         self._sim_phase += 0.01
 
         baseline = 2048.0 + 30.0 * np.sin(self._sim_phase * 0.1)
         noise = np.random.normal(0, 12.0)
-        ch1_val = baseline + noise
+        raw_val = baseline + noise
 
-        # Periodic double blink in CH1
+        # Simulate periodic double blink burst
         cycle_sec = now % 15.0
         if 5.0 <= cycle_sec < 5.15:
             rel_t = (cycle_sec - 5.0) / 0.15
-            ch1_val += 480.0 * np.sin(rel_t * np.pi)
+            raw_val += 480.0 * np.sin(rel_t * np.pi)
         elif 5.45 <= cycle_sec < 5.60:
             rel_t = (cycle_sec - 5.45) / 0.15
-            ch1_val += 520.0 * np.sin(rel_t * np.pi)
-
-        # Baseline for CH2 and CH3
-        ch2_val = 2048.0 + np.random.normal(0, 10.0)
-        ch3_val = 2048.0 + np.random.normal(0, 10.0)
-
-        # Periodic EMG bursts:
-        # 10s - 12s: Left EMG (turn left)
-        # 13s - 15s: Right EMG (turn right)
-        # 7s - 9s: Bilateral EMG (backward)
-        if 10.0 <= cycle_sec < 12.0:
-            ch2_val += np.random.normal(0, 120.0)
-        elif 13.0 <= cycle_sec < 15.0:
-            ch3_val += np.random.normal(0, 120.0)
-        elif 7.0 <= cycle_sec < 9.0:
-            ch2_val += np.random.normal(0, 140.0)
-            ch3_val += np.random.normal(0, 140.0)
+            raw_val += 520.0 * np.sin(rel_t * np.pi)
 
         self._sim_counter = (self._sim_counter + 1) & 0xFF
-        pkt = encode_chords_packet(self._sim_counter, [int(ch1_val), int(ch2_val), int(ch3_val)])
+        pkt = encode_chords_packet(self._sim_counter, [int(raw_val), 2048, 2048])
         packets = self.decoder.feed(pkt)
         for _, ch_values in packets:
-            self._process_sample(now, float(ch_values[0]), float(ch_values[1]), float(ch_values[2]))
+            self._process_sample(now, float(ch_values[0]))
             self._packet_count_window += 1
 
-    def _process_sample(self, timestamp: float, raw_ch1: float, raw_ch2: float = 2048.0, raw_ch3: float = 2048.0):
-        # 1. Filter sample for CH1 EOG
-        filtered_ch1 = self.filter.filter_sample(raw_ch1)
+    def _process_sample(self, timestamp: float, raw_val: float):
+        # 1. Filter sample
+        filtered_val = self.filter.filter_sample(raw_val)
 
         # 2. Store in thread-safe buffers
         with self._buffer_lock:
             self.timestamps.append(timestamp)
-            self.raw_ch1.append(raw_ch1)
-            self.filtered_ch1.append(filtered_ch1)
-            self.raw_ch2.append(raw_ch2)
-            self.filtered_ch2.append(raw_ch2 - 2048.0)
-            self.raw_ch3.append(raw_ch3)
-            self.filtered_ch3.append(raw_ch3 - 2048.0)
+            self.raw_ch1.append(raw_val)
+            self.filtered_ch1.append(filtered_val)
 
         # 3. Calibration sample intake
-        self.calibration_mgr.feed_sample(raw_ch1, filtered_ch1)
+        self.calibration_mgr.feed_sample(raw_val, filtered_val)
 
         # 4. Double blink detection (for Smart Home)
         threshold_db = self.calibration_mgr.blink_peak_threshold
@@ -401,7 +362,7 @@ class SerialManager:
         is_cal = self.calibration_mgr.calibrated or self.use_mock
 
         event = self.blink_detector.process_sample(
-            filtered_val=filtered_ch1,
+            filtered_val=filtered_val,
             timestamp=timestamp,
             threshold=threshold_db,
             is_signal_good=is_good,
@@ -419,7 +380,7 @@ class SerialManager:
         is_game_cal = self.calibration_mgr.game_calibrated or self.use_mock
 
         sb_event = self.single_blink_detector.process_sample(
-            filtered_val=filtered_ch1,
+            filtered_val=filtered_val,
             timestamp=timestamp,
             threshold=threshold_sb,
             is_signal_good=is_good,
@@ -431,20 +392,6 @@ class SerialManager:
                 self.on_single_blink_callback(sb_event)
             except Exception as e:
                 logger.error(f"Error in single blink callback: {e}")
-
-        # 6. Assistive Wheelchair Multichannel EEG + EMG Classification
-        wc_res = self.wheelchair_classifier.classify(
-            ch1_raw=raw_ch1,
-            ch2_raw=raw_ch2,
-            ch3_raw=raw_ch3,
-            is_signal_good=is_good,
-        )
-        self.latest_wheelchair_status = wc_res
-        if self.on_wheelchair_callback:
-            try:
-                self.on_wheelchair_callback(wc_res)
-            except Exception as e:
-                logger.error(f"Error in Wheelchair callback: {e}")
 
     def get_signal_snapshot(self, num_points: int = 500) -> Dict[str, Any]:
         """Thread-safe snapshot with explicit hardware source tagging."""
@@ -458,12 +405,6 @@ class SerialManager:
                     "timestamps": [],
                     "raw_ch1": [],
                     "filtered_ch1": [],
-                    "raw_ch2": [],
-                    "filtered_ch2": [],
-                    "raw_ch3": [],
-                    "filtered_ch3": [],
-                    "movo": self.latest_wheelchair_status,
-                    "wheelchair": self.latest_wheelchair_status,
                     "quality": self.latest_quality if not self.use_mock else {"score": 95, "is_good": True, "status": "GOOD"},
                     "calibration": self.calibration_mgr.get_status(),
                     "sample_rate": self.latest_sample_rate_measured if is_conn else 0.0,
@@ -479,21 +420,11 @@ class SerialManager:
             t_list = list(self.timestamps)[-pts:]
             raw_list = list(self.raw_ch1)[-pts:]
             filt_list = list(self.filtered_ch1)[-pts:]
-            raw2_list = list(self.raw_ch2)[-pts:]
-            filt2_list = list(self.filtered_ch2)[-pts:]
-            raw3_list = list(self.raw_ch3)[-pts:]
-            filt3_list = list(self.filtered_ch3)[-pts:]
 
         return {
             "timestamps": [round(t, 3) for t in t_list],
             "raw_ch1": [round(r, 1) for r in raw_list],
             "filtered_ch1": [round(f, 1) for f in filt_list],
-            "raw_ch2": [round(r, 1) for r in raw2_list],
-            "filtered_ch2": [round(f, 1) for f in filt2_list],
-            "raw_ch3": [round(r, 1) for r in raw3_list],
-            "filtered_ch3": [round(f, 1) for f in filt3_list],
-            "movo": self.latest_wheelchair_status,
-            "wheelchair": self.latest_wheelchair_status,
             "quality": self.latest_quality,
             "calibration": self.calibration_mgr.get_status(),
             "sample_rate": self.latest_sample_rate_measured,

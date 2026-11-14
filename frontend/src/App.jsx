@@ -13,7 +13,6 @@ import DeviceStatusBanner from "./components/DeviceStatusBanner";
 import LiveWaveform from "./components/LiveWaveform";
 import SmartHomePanel from "./components/SmartHomePanel";
 import DinoGame from "./components/DinoGame";
-import WheelchairPanel from "./components/WheelchairPanel";
 import CalibrationModal from "./components/CalibrationModal";
 import DiagnosticsModal from "./components/DiagnosticsModal";
 import EventLogTable from "./components/EventLogTable";
@@ -37,10 +36,6 @@ import {
   startAcquisition,
   stopAcquisition,
   setSimulationMode,
-  fetchWheelchairStatus,
-  sendWheelchairCommand,
-  sendWheelchairStop,
-  sendWheelchairSpeed,
 } from "./services/api";
 import { createSignalWebSocket } from "./services/websocket";
 
@@ -67,15 +62,6 @@ export default function App() {
   const [latestGameJump, setLatestGameJump] = useState(null);
   const [gameJumpCounter, setGameJumpCounter] = useState(0);
 
-  // Assistive Wheelchair Stream Data
-  const [wheelchairStatus, setWheelchairStatus] = useState({
-    connected: false,
-    current_command: "STOP",
-    command_source: "NONE",
-    speed: 140,
-  });
-  const [wheelchairSignal, setWheelchairSignal] = useState(null);
-
   // Modals
   const [isCalibModalOpen, setIsCalibModalOpen] = useState(false);
   const [isDiagModalOpen, setIsDiagModalOpen] = useState(false);
@@ -101,7 +87,22 @@ export default function App() {
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(refreshData, 3000);
+    // Only poll logs and basic status; do not clobber calibration or live stream state
+    const interval = setInterval(async () => {
+      try {
+        const [app, dev, logData] = await Promise.all([
+          fetchAppStatus(),
+          fetchDeviceStatus(),
+          fetchLogs(),
+        ]);
+        setAppStatus(app);
+        setDeviceStatus(dev);
+        setLogs(logData.events || []);
+        setRelayActions(logData.relay_actions || []);
+      } catch (err) {
+        console.warn("Poll error:", err);
+      }
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -115,10 +116,6 @@ export default function App() {
       if (data.latest_double_blink) setLatestDoubleBlink(data.latest_double_blink);
       if (data.latest_game_jump) setLatestGameJump(data.latest_game_jump);
       if (data.game_jump_counter !== undefined) setGameJumpCounter(data.game_jump_counter);
-      if (data.wheelchair_status) setWheelchairStatus(data.wheelchair_status);
-      else if (data.rover_status) setWheelchairStatus(data.rover_status);
-      if (data.wheelchair) setWheelchairSignal(data.wheelchair);
-      else if (data.movo) setWheelchairSignal(data.movo);
       if (data.calibration) setCalibrationStatus(data.calibration);
       if (data.relay_state) {
         setDeviceStatus((prev) => ({
@@ -158,15 +155,6 @@ export default function App() {
   const handleActivateGame = async () => {
     try {
       await activateApp("GAME_ACTIVE");
-      await refreshData();
-    } catch (err) {
-      alert(`Activation Error: ${err.message}`);
-    }
-  };
-
-  const handleActivateWheelchair = async () => {
-    try {
-      await activateApp("WHEELCHAIR_ACTIVE");
       await refreshData();
     } catch (err) {
       alert(`Activation Error: ${err.message}`);
@@ -251,9 +239,8 @@ export default function App() {
   const handleEmergencyStop = async () => {
     try {
       await emergencyStop();
-      await sendWheelchairStop();
       await refreshData();
-      alert("EMERGENCY STOP: All active gestures and actuators disarmed.");
+      alert("EMERGENCY STOP: Smart Home gestures disarmed.");
     } catch (err) {
       alert(`Emergency stop error: ${err.message}`);
     }
@@ -309,30 +296,15 @@ export default function App() {
         onSetSimulation={handleSetSimulation}
       />
 
-      {/* Application Cards (Smart Home, Dino Game, Wheelchair) */}
+      {/* Application Cards (Smart Home Active, Game Active, Wheelchair Disabled) */}
       <ApplicationCards
         currentMode={appStatus.current_mode}
         onActivateSmartHome={handleActivateSmartHome}
         onActivateGame={handleActivateGame}
-        onActivateWheelchair={handleActivateWheelchair}
         onDeactivate={handleDeactivate}
         isCalibrated={calibrationStatus.calibrated}
         isSignalGood={quality.is_good}
       />
-
-      {/* Conditional Wheelchair Dashboard when WHEELCHAIR_ACTIVE */}
-      {appStatus.current_mode === "WHEELCHAIR_ACTIVE" && (
-        <div style={{ marginBottom: "1.5rem" }}>
-          <WheelchairPanel
-            isWheelchairActive={true}
-            wheelchairStatus={wheelchairStatus}
-            signalData={wheelchairSignal}
-            onSendCommand={sendWheelchairCommand}
-            onSendStop={sendWheelchairStop}
-            onSetSpeed={sendWheelchairSpeed}
-          />
-        </div>
-      )}
 
       {/* Conditional Dino Game when GAME_ACTIVE */}
       {appStatus.current_mode === "GAME_ACTIVE" && (

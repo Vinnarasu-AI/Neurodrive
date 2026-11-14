@@ -10,7 +10,6 @@ describe('ApplicationCards Component', () => {
         currentMode="IDLE"
         onActivateSmartHome={() => {}}
         onActivateGame={() => {}}
-        onActivateWheelchair={() => {}}
         onDeactivate={() => {}}
         isCalibrated={false}
         isSignalGood={true}
@@ -19,7 +18,27 @@ describe('ApplicationCards Component', () => {
 
     expect(screen.getByText('Smart Home Automation')).toBeDefined();
     expect(screen.getByText('EOG Dino Runner Game')).toBeDefined();
-    expect(screen.getByText('Assistive Wheelchair')).toBeDefined();
+    expect(screen.getByText('Wheelchair Control')).toBeDefined();
+  });
+
+  it('ensures Wheelchair card is strictly Coming Soon and disabled', () => {
+    render(
+      <ApplicationCards
+        currentMode="IDLE"
+        onActivateSmartHome={() => {}}
+        onActivateGame={() => {}}
+        onDeactivate={() => {}}
+        isCalibrated={false}
+        isSignalGood={true}
+      />
+    );
+
+    const comingSoonBadges = screen.getAllByText('Coming Soon');
+    expect(comingSoonBadges.length).toBe(1);
+
+    const lockedButtons = screen.getAllByRole('button', { name: /Locked/i });
+    expect(lockedButtons.length).toBe(1);
+    expect(lockedButtons[0].hasAttribute('disabled')).toBe(true);
   });
 
   it('shows Deactivate button when Smart Home is active', () => {
@@ -28,7 +47,6 @@ describe('ApplicationCards Component', () => {
         currentMode="SMART_HOME_ACTIVE"
         onActivateSmartHome={() => {}}
         onActivateGame={() => {}}
-        onActivateWheelchair={() => {}}
         onDeactivate={() => {}}
         isCalibrated={true}
         isSignalGood={true}
@@ -44,7 +62,6 @@ describe('ApplicationCards Component', () => {
         currentMode="GAME_ACTIVE"
         onActivateSmartHome={() => {}}
         onActivateGame={() => {}}
-        onActivateWheelchair={() => {}}
         onDeactivate={() => {}}
         isCalibrated={true}
         isSignalGood={true}
@@ -52,21 +69,5 @@ describe('ApplicationCards Component', () => {
     );
 
     expect(screen.getByText('Deactivate Game')).toBeDefined();
-  });
-
-  it('shows Deactivate button when Wheelchair is active', () => {
-    render(
-      <ApplicationCards
-        currentMode="WHEELCHAIR_ACTIVE"
-        onActivateSmartHome={() => {}}
-        onActivateGame={() => {}}
-        onActivateWheelchair={() => {}}
-        onDeactivate={() => {}}
-        isCalibrated={true}
-        isSignalGood={true}
-      />
-    );
-
-    expect(screen.getByText('Deactivate Wheelchair')).toBeDefined();
   });
 });

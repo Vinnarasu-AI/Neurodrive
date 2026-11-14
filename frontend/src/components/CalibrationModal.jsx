@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sliders, Eye, RotateCcw, X, Home, Gamepad2, Navigation } from "lucide-react";
+import { Sliders, Eye, RotateCcw, X, Home, Gamepad2 } from "lucide-react";
 
 export default function CalibrationModal({
   isOpen,
@@ -8,7 +8,7 @@ export default function CalibrationModal({
   onStartCalibration,
   onResetCalibration,
 }) {
-  const [selectedTarget, setSelectedTarget] = useState("smart_home"); // "smart_home", "game", or "wheelchair"
+  const [selectedTarget, setSelectedTarget] = useState("smart_home"); // "smart_home" or "game"
 
   if (!isOpen) return null;
 
@@ -17,8 +17,6 @@ export default function CalibrationModal({
 
   const currentProf = selectedTarget === "game"
     ? calibrationStatus.game || {}
-    : selectedTarget === "wheelchair"
-    ? calibrationStatus.wheelchair || {}
     : calibrationStatus.smart_home || {};
 
   const isTargetCalibrated = currentProf.calibrated;
@@ -92,26 +90,6 @@ export default function CalibrationModal({
             }}
           >
             <Gamepad2 size={14} /> Dino Game Profile
-          </button>
-          <button
-            onClick={() => setSelectedTarget("wheelchair")}
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              borderRadius: "6px",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.4rem",
-              background: selectedTarget === "wheelchair" ? "#1E293B" : "transparent",
-              color: selectedTarget === "wheelchair" ? "#3B82F6" : "#94A3B8",
-            }}
-          >
-            <Navigation size={14} /> Wheelchair Profile
           </button>
         </div>
 
